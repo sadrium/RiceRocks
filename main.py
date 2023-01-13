@@ -6,15 +6,12 @@ import random
 from pygame.locals import *
 from SpriteStripAnim import SpriteStripAnim
 
-
 WIDTH = 800
 HEIGHT = 600
 score = 0
 lives = 3
 time = 0.5
 started = False
-
-
 
 class ImageInfo:
     def __init__(self, center, size, radius=0, lifespan=None, animated=False):
@@ -44,13 +41,15 @@ main_dir = os.path.split(os.path.abspath(__file__))[0]
 
 
 def load_image(file):
-    "loads an image, prepares it for play"
     file = os.path.join(main_dir, 'art', file)
     try:
         surface = pygame.image.load(file)
     except pygame.error:
-        raise SystemExit('Could not load image "%s" %s' % (file, pygame.get_error()))
+        raise SystemExit('Error while loading image "%s" %s' % (file, pygame.get_error()))
     return surface.convert_alpha()
+
+def angle_to_vector(ang):
+    return [math.cos(ang), math.sin(ang)]
 
 
 def load_sound(file):
@@ -58,17 +57,8 @@ def load_sound(file):
     sound = pygame.mixer.Sound(file)
     return sound
 
-
-
-
-
-def angle_to_vector(ang):
-    return [math.cos(ang), math.sin(ang)]
-
-
 def dist(p, q):
     return math.sqrt((p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2)
-
 
 def rot_center(image, angle):
     
@@ -79,13 +69,9 @@ def rot_center(image, angle):
     rot_image = rot_image.subsurface(rot_rect).copy()
     return rot_image
 
-
-
-
-
 class Ship:
-    def __init__(self, pos, vel, angle, image, info):
-        self.pos = [pos[0], pos[1]]
+    def __init__(self, position, vel, angle, image, info):
+        self.position = [position[0], position[1]]
         self.vel = [vel[0], vel[1]]
         self.thrust = False
         self.angle = angle
@@ -99,13 +85,13 @@ class Ship:
         self.image_size = info.get_size()
         self.radius = info.get_radius()
         self.rect = self.image.get_rect()
-        self.center_pos = [(self.pos[0] + self.image_width / 2), (self.pos[1] + self.image_height / 2)]
-
-    def get_position(self):
-        return self.pos
-
+        self.center_pos = [(self.position[0] + self.image_width / 2), (self.position[1] + self.image_height / 2)]
+        
     def get_radius(self):
         return self.radius
+
+    def get_position(self):
+        return self.position
 
     def turn(self, direction):
         self.angle_vel = direction
@@ -125,12 +111,12 @@ class Ship:
         vel[0] = self.vel[0] + forward[0] * base_missle_speed
         vel[1] = self.vel[1] + -forward[1] * base_missle_speed
 
-        pos = [0, 0]
+        position = [0, 0]
         
-        pos[0] = self.pos[0] + (self.radius + 5 + self.image_width / 2 * forward[0])
-        pos[1] = self.pos[1] + (self.radius + 5 + self.image_height / 2 * -forward[1])
+        position[0] = self.position[0] + (self.radius + 5 + self.image_width / 2 * forward[0])
+        position[1] = self.position[1] + (self.radius + 5 + self.image_height / 2 * -forward[1])
 
-        a_missile = Sprite(pos, vel, 0, 0, missile_image, missile_info, missile_sound)
+        a_missile = Sprite(position, vel, 0, 0, missile_image, missile_info, missile_sound)
         missile_group.add(a_missile)
 
     def draw(self, screen):
@@ -139,29 +125,27 @@ class Ship:
         else:
             self.original = self.images[0]
 
-        screen.blit(self.image, self.pos)
+        screen.blit(self.image, self.position)
 
     def update(self):
-        self.pos[0] += self.vel[0]
-        self.pos[1] += self.vel[1]
-        self.center_pos = [(self.pos[0] + self.image_width / 2), (self.pos[1] + self.image_height / 2)]
+        self.position[0] += self.vel[0]
+        self.position[1] += self.vel[1]
+        self.center_pos = [(self.position[0] + self.image_width / 2), (self.position[1] + self.image_height / 2)]
         
         c = 0.015
         self.vel[0] *= (1 - c)
         self.vel[1] *= (1 - c)
 
-        
-        if self.pos[1] + self.image_height <= self.radius:  
-            self.pos[1] = self.pos[1] % HEIGHT + self.image_height
-        if self.pos[1] >= HEIGHT:
-            self.pos[1] = self.pos[1] % HEIGHT - self.image_height
+        if self.position[1] + self.image_height <= self.radius:  
+            self.position[1] = self.position[1] % HEIGHT + self.image_height
+        if self.position[1] >= HEIGHT:
+            self.position[1] = self.position[1] % HEIGHT - self.image_height
 
-        if self.pos[0] + self.image_width <= 0:  
-            self.pos[0] = self.pos[0] % WIDTH + self.image_width
-        if self.pos[0] >= WIDTH:
-            self.pos[0] = self.pos[0] % WIDTH - self.image_width
+        if self.position[0] + self.image_width <= 0:  
+            self.position[0] = self.position[0] % WIDTH + self.image_width
+        if self.position[0] >= WIDTH:
+            self.position[0] = self.position[0] % WIDTH - self.image_width
 
-            
         forward = angle_to_vector(math.radians(self.angle))
         if self.thrust:
             self.vel[0] += forward[0] * 0.1
@@ -169,10 +153,9 @@ class Ship:
         self.angle += self.angle_vel
         self.image = rot_center(self.original, self.angle)
 
-
 class Sprite:
-    def __init__(self, pos, vel, ang, ang_vel, image, info, sound=None, strip=None):
-        self.pos = [pos[0], pos[1]]
+    def __init__(self, position, vel, ang, ang_vel, image, info, sound=None, strip=None):
+        self.position = [position[0], position[1]]
         self.vel = [vel[0], vel[1]]
         self.angle = ang
         self.angle_vel = ang_vel
@@ -185,7 +168,7 @@ class Sprite:
         self.radius = info.get_radius()
         self.lifespan = info.get_lifespan()
         self.animated = info.get_animated()
-        self.center_pos = [(self.pos[0] + self.image_width / 2), (self.pos[1] + self.image_height / 2)]
+        self.center_pos = [(self.position[0] + self.image_width / 2), (self.position[1] + self.image_height / 2)]
         self.age = 0
         if strip:
             self.strip = strip
@@ -195,8 +178,7 @@ class Sprite:
             sound.play()
 
     def get_position(self):
-        return self.pos
-
+        return self.position
 
     def get_radius(self):
         return self.radius
@@ -212,25 +194,25 @@ class Sprite:
     def draw(self, screen):
         if self.animated:
             self.image = self.strip.next()
-            screen.blit(self.image, self.pos)
+            screen.blit(self.image, self.position)
         else:
-            screen.blit(self.image, self.pos)
+            screen.blit(self.image, self.position)
 
     def update(self):
-        self.pos[0] += self.vel[0]
-        self.pos[1] += self.vel[1]
+        self.position[0] += self.vel[0]
+        self.position[1] += self.vel[1]
         self.age += 1
-        self.center_pos = [(self.pos[0] + self.image_width / 2), (self.pos[1] + self.image_height / 2)]
+        self.center_pos = [(self.position[0] + self.image_width / 2), (self.position[1] + self.image_height / 2)]
         
-        if self.pos[1] + self.image_height <= self.radius:
-            self.pos[1] = self.pos[1] % HEIGHT + self.image_height
-        if self.pos[1] >= HEIGHT:
-            self.pos[1] = self.pos[1] % HEIGHT - self.image_height
+        if self.position[1] + self.image_height <= self.radius:
+            self.position[1] = self.position[1] % HEIGHT + self.image_height
+        if self.position[1] >= HEIGHT:
+            self.position[1] = self.position[1] % HEIGHT - self.image_height
 
-        if self.pos[0] + self.image_width <= 0:
-            self.pos[0] = self.pos[0] % WIDTH + self.image_width
-        if self.pos[0] >= WIDTH:
-            self.pos[0] = self.pos[0] % WIDTH - self.image_width
+        if self.position[0] + self.image_width <= 0:
+            self.position[0] = self.position[0] % WIDTH + self.image_width
+        if self.position[0] >= WIDTH:
+            self.position[0] = self.position[0] % WIDTH - self.image_width
 
         self.angle += self.angle_vel
         self.image = rot_center(self.original, self.angle)
@@ -239,7 +221,6 @@ class Sprite:
             return False
         else:
             return True
-
 
 def group_collide(group, other_object):
     
@@ -253,7 +234,6 @@ def group_collide(group, other_object):
     else:
         return False
 
-
 def group_group_collide(group1, group2):
     score_add = 0
     for elem in set(group1):
@@ -262,14 +242,12 @@ def group_group_collide(group1, group2):
             score_add += 1
     return score_add
 
-
 def process_sprite_group(group, screen):
     for elem in set(group):
         elem.draw(screen)
         is_old = elem.update()
         if is_old:
             group.remove(elem)
-
 
 def score_to_range():
     global score
@@ -281,8 +259,6 @@ def score_to_range():
         return 4
     else:
         return 5
-
-
 
 def rock_spawner():
     global rock_group, started, my_ship, score
@@ -301,27 +277,24 @@ def rock_spawner():
         if distance > 100:
             rock_group.add(a_rock)
 
-
 def restart():
     global rock_group, started
     started = False
     for elem in set(rock_group):
         rock_group.discard(elem)
 
-
-def click(pos):
+def click(position):
     global started, lives, score
     center = [WIDTH / 2, HEIGHT / 2]
     size = splash_info.get_size()
-    inwidth = (center[0] - size[0] / 2) < pos[0] < (center[0] + size[0] / 2)
-    inheight = (center[1] - size[1] / 2) < pos[1] < (center[1] + size[1] / 2)
+    inwidth = (center[0] - size[0] / 2) < position[0] < (center[0] + size[0] / 2)
+    inheight = (center[1] - size[1] / 2) < position[1] < (center[1] + size[1] / 2)
     lives = 3
     score = 0
     if (not started) and inwidth and inheight:
         soundtrack.stop()
         soundtrack.play()
         started = True
-
 
 def main():
     
@@ -378,11 +351,9 @@ def main():
     background = load_image('nebula_blue.f2014.png')
     debris_image = load_image('debris2_blue.png')
 
-    
     fontObj = pygame.font.Font(None, 50)
     white_color = pygame.Color(255, 255, 255)
 
-    
     clock = pygame.time.Clock()
     pygame.time.set_timer(USEREVENT + 1, 1000)
     
@@ -416,13 +387,11 @@ def main():
         
         my_ship.update()
 
-        
         global score, lives
         if group_collide(rock_group, my_ship):
             lives -= 1
         score += group_group_collide(missile_group, rock_group)
 
-        
         global time
         time += 1
         wtime = (time / 4) % WIDTH
@@ -435,7 +404,6 @@ def main():
         process_sprite_group(explosion_group, screen)
         process_sprite_group(rock_group, screen)
 
-        
         screen.blit(fontObj.render("Score: %d" % score, True, white_color), (0, 0))
         screen.blit(fontObj.render("Lives: %d" % lives, True, white_color), (620, 0))
         
@@ -447,8 +415,5 @@ def main():
         if lives == 0:
             restart()
 
-
-print("If you can see this, then PyGame was succesfully imported")
-
 if __name__ == '__main__':
-	 main()
+    main()
